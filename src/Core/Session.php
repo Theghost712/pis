@@ -54,89 +54,105 @@ class Session
         }
     }
 
-    public function set(string $key, $value): void
+    public static function set(string $key, $value): void
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         $_SESSION[$key] = $value;
     }
 
-    public function get(string $key, $default = null)
+    public static function get(string $key, $default = null)
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         return $_SESSION[$key] ?? $default;
     }
 
-    public function has(string $key): bool
+    public static function has(string $key): bool
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         return isset($_SESSION[$key]);
     }
 
-    public function remove(string $key): void
+    public static function remove(string $key): void
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         unset($_SESSION[$key]);
     }
 
-    public function clear(): void
+    public static function clear(): void
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         $_SESSION = [];
     }
 
-    public function destroy(): void
+    public static function destroy(): void
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         $_SESSION = [];
         session_destroy();
         session_write_close();
-        $this->started = false;
+        $instance->started = false;
     }
 
-    public function regenerateId(): void
+    public static function regenerateId(): void
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         session_regenerate_id(true);
     }
 
-    public function isLoggedIn(): bool
+    public static function isLoggedIn(): bool
     {
-        $this->start();
-        return $this->has('user_id') && $this->has('user_role');
+        $instance = self::getInstance();
+        $instance->start();
+        return $instance->has('user_id') && $instance->has('user_role');
     }
 
-    public function getUserId(): ?int
+    public static function getUserId(): ?int
     {
-        return $this->get('user_id');
+        return self::get('user_id');
     }
 
-    public function getUserRole(): ?string
+    public static function getUserRole(): ?string
     {
-        return $this->get('user_role');
+        return self::get('user_role');
     }
 
-    public function getUserName(): ?string
+    public static function getUserName(): ?string
     {
-        return $this->get('user_name');
+        return self::get('user_name');
     }
 
-    public function setFlash(string $key, $value): void
+    public static function getUserEmail(): ?string
     {
-        $this->start();
+        return self::get('user_email');
+    }
+
+    public static function setFlash(string $key, $value): void
+    {
+        $instance = self::getInstance();
+        $instance->start();
         $_SESSION['_flash'][$key] = $value;
     }
 
-    public function getFlash(string $key, $default = null)
+    public static function getFlash(string $key, $default = null)
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         $value = $_SESSION['_flash'][$key] ?? $default;
         unset($_SESSION['_flash'][$key]);
         return $value;
     }
 
-    public function hasFlash(string $key): bool
+    public static function hasFlash(string $key): bool
     {
-        $this->start();
+        $instance = self::getInstance();
+        $instance->start();
         return isset($_SESSION['_flash'][$key]);
     }
 }

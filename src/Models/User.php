@@ -44,6 +44,16 @@ class User
         return $this->hydrate($data);
     }
 
+    public function find(int $id): ?array
+    {
+        $db = Database::getInstance();
+        $stmt = $db->prepareAndExecute(
+            "SELECT * FROM users WHERE id = ? LIMIT 1",
+            [$id]
+        );
+        return $stmt->fetch() ?: null;
+    }
+
     public function findByUsername(string $username): ?self
     {
         $db = Database::getInstance();
@@ -70,6 +80,13 @@ class User
             return null;
         }
         return $this->hydrate($data);
+    }
+
+    public function all(): array
+    {
+        $db = Database::getInstance();
+        $stmt = $db->prepareAndExecute("SELECT * FROM users ORDER BY created_at DESC");
+        return $stmt->fetchAll();
     }
 
     public function findAll(array $filters = [], string $orderBy = 'created_at DESC', int $limit = 100, int $offset = 0): array
@@ -162,13 +179,13 @@ class User
         return $db->lastInsertId();
     }
 
-    public function update(array $data): bool
+    public function update(array $data, ?int $id = null): bool
     {
         $db = Database::getInstance();
         $fields = [];
         $params = [];
 
-        $allowedFields = ['first_name', 'last_name', 'email', 'is_active', 'is_verified', 'mfa_secret', 'mfa_enabled', 'last_login'];
+        $allowedFields = ['first_name', 'last_name', 'email', 'is_active', 'is_verified', 'mfa_secret', 'mfa_enabled', 'last_login', 'role'];
 
         foreach ($allowedFields as $field) {
             if (array_key_exists($field, $data)) {
@@ -186,29 +203,31 @@ class User
             return true;
         }
 
-        $params[] = $this->id;
+        $userId = $id ?? $this->id;
+        $params[] = $userId;
         $sql = "UPDATE users SET " . implode(', ', $fields) . " WHERE id = ?";
         $db->prepareAndExecute($sql, $params);
         return true;
     }
 
-    public function delete(): bool
+    public function delete(?int $id = null): bool
     {
         $db = Database::getInstance();
+        $userId = $id ?? $this->id;
         $db->prepareAndExecute(
             "UPDATE users SET is_active = 0 WHERE id = ?",
-            [$this->id]
+            [$userId]
         );
-        $this->isActive = false;
         return true;
     }
 
-    public function hardDelete(): bool
+    public function hardDelete(?int $id = null): bool
     {
         $db = Database::getInstance();
+        $userId = $id ?? $this->id;
         $db->prepareAndExecute(
             "DELETE FROM users WHERE id = ?",
-            [$this->id]
+            [$userId]
         );
         return true;
     }

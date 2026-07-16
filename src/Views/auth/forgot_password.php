@@ -13,7 +13,7 @@ ob_start();
                     Enter your email address and we'll send you a link to reset your password.
                 </p>
                 <form method="POST" action="/forgot-password" class="validated">
-                    <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <div class="mb-4">
                         <label for="email" class="form-label">Email Address</label>
                         <input type="email" class="form-control" id="email" name="email" 

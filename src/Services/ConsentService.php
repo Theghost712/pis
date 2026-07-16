@@ -28,12 +28,11 @@ class ConsentService
             return null;
         }
 
-        if ($consent['status'] === 'granted') {
+        if ($consent['status'] === 'active') {
             return $consent;
         }
 
-        $this->consentModel->updateStatus($consentId, 'granted', 'granted_at');
-        $this->consentModel->update($consentId, ['status' => 'granted', 'granted_at' => date('Y-m-d H:i:s')]);
+        $this->consentModel->updateStatus($consentId, 'active', 'granted_at');
 
         $this->auditService->log(
             'consent_granted',
@@ -60,10 +59,7 @@ class ConsentService
             return $consent;
         }
 
-        $this->consentModel->update($consentId, [
-            'status' => 'revoked',
-            'revoked_at' => date('Y-m-d H:i:s'),
-        ]);
+        $this->consentModel->updateStatus($consentId, 'revoked', 'revoked_at');
 
         $this->auditService->log(
             'consent_revoked',
@@ -83,7 +79,7 @@ class ConsentService
         $conditions = [
             'patient_id' => $patientId,
             'consent_type' => $consentType,
-            'status' => 'granted',
+            'status' => 'active',
         ];
 
         if ($providerId !== null) {
@@ -99,7 +95,7 @@ class ConsentService
         $consent = $results[0];
 
         if ($consent['expires_at'] !== null && strtotime($consent['expires_at']) < time()) {
-            $this->consentModel->update($consent['id'], ['status' => 'expired']);
+            $this->consentModel->updateStatus((int)$consent['id'], 'expired');
             return false;
         }
 
@@ -109,7 +105,7 @@ class ConsentService
     private function notifyConsentChange(array $consent, string $action): void
     {
         $patientModel = new \App\Models\Patient();
-        $patient = $patientModel->find($consent['patient_id']);
+        $patient = $patientModel->find((int)$consent['patient_id']);
 
         if ($patient && ($action === 'revoked' || $action === 'granted')) {
             $this->notificationService->send(

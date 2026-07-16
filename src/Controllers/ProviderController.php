@@ -29,7 +29,7 @@ class ProviderController extends Controller
         $userId = Session::get('user_id');
         $provider = $this->model->findByUserId($userId);
 
-        $records = $provider ? $this->recordModel->findByProviderId($provider['id']) : [];
+        $records = $provider ? $this->recordModel->findByProviderId($provider->getId()) : [];
         $patientIds = array_unique(array_column($records, 'patient_id'));
         $patients = [];
         foreach ($patientIds as $pid) {
@@ -54,6 +54,16 @@ class ProviderController extends Controller
     {
         $user = ['id' => Session::get('user_id'), 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
         $this->view('provider.referrals', ['user' => $user, 'currentPage' => 'referrals']);
+    }
+
+    public function records(): void
+    {
+        $userId = Session::get('user_id');
+        $provider = $this->model->findByUserId($userId);
+        $records = $provider ? $this->recordModel->findByProviderId($provider->getId()) : [];
+
+        $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
+        $this->view('provider.records', ['user' => $user, 'records' => $records, 'currentPage' => 'records']);
     }
 
     // ========== API ROUTES ==========

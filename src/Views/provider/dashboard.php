@@ -1,12 +1,11 @@
 <?php
-$totalPatients = $totalPatients ?? 0;
-$recentRecordsCount = $recentRecordsCount ?? 0;
-$pendingReferrals = $pendingReferrals ?? 0;
+$totalPatients = $stats['total_patients'] ?? 0;
+$recentRecordsCount = $stats['total_records'] ?? 0;
+$pendingReferrals = $stats['pending_referrals'] ?? 0;
 $recentActivity = $recentActivity ?? [];
-$providerName = $user['name'] ?? 'Provider';
 ?>
 <div style="margin-bottom:32px;">
-    <h2 style="font-size:24px;font-weight:700;margin-bottom:4px;">Welcome, Dr. <?= htmlspecialchars(explode(' ', $providerName)[0]) ?>!</h2>
+    <h2 style="font-size:24px;font-weight:700;margin-bottom:4px;">Welcome, Dr. <?= htmlspecialchars(explode(' ', $_SESSION['user_name'] ?? 'Provider')[0]) ?>!</h2>
     <p style="color:#666;font-size:14px;">Here's your practice overview.</p>
 </div>
 

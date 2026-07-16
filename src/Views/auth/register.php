@@ -12,7 +12,7 @@ ob_start();
             <div class="card-body p-4">
                 <h5 class="text-center mb-4">Create Your Account</h5>
                 <form method="POST" action="/register" class="validated" enctype="multipart/form-data">
-                    <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     
                     <div class="row">
                         <div class="col-md-6 mb-3">

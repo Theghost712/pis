@@ -1,7 +1,4 @@
 <?php
-$pageTitle = 'Patient Dashboard';
-$dashboardUrl = '/patient/dashboard';
-ob_start();
 ?>
 <div class="row">
     <div class="col-12">
@@ -158,6 +155,4 @@ ob_start();
         </div>
     </div>
 </div>
-<?php
-$content = ob_get_clean();
-require_once __DIR__ . '/../layouts/main.php';
+?>

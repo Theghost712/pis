@@ -15,7 +15,7 @@ ob_start();
                 <form method="POST" action="/login">
                     <input type="hidden" name="username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>">
                     <input type="hidden" name="password" value="<?php echo htmlspecialchars($_POST['password'] ?? ''); ?>">
-                    <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <div class="mb-4">
                         <label for="mfa_code" class="form-label">Authentication Code</label>
                         <input type="text" class="form-control form-control-lg text-center" id="mfa_code" 

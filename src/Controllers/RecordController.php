@@ -39,7 +39,7 @@ class RecordController extends Controller
         $this->view('provider.add_record', ['user' => $user, 'patients' => $patients, 'currentPage' => 'add_record']);
     }
 
-    public function store(): void
+    public function webStore(): void
     {
         if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
             $this->redirect('/provider/records/add');
@@ -52,7 +52,7 @@ class RecordController extends Controller
 
         $this->model->create([
             'patient_id' => (int) ($input['patient_id'] ?? 0),
-            'provider_id' => $provider ? $provider['id'] : null,
+            'provider_id' => $provider ? $provider->getId() : null,
             'record_type' => $input['record_type'] ?? 'visit',
             'title' => $input['title'] ?? '',
             'description' => $input['description'] ?? '',
@@ -161,7 +161,7 @@ class RecordController extends Controller
         }
 
         $provider = $this->providerModel->findByUserId($user['id']);
-        $providerId = $input['provider_id'] ?? ($provider ? $provider['id'] : null);
+        $providerId = $input['provider_id'] ?? ($provider ? $provider->getId() : null);
 
         $data = [
             'patient_id' => (int) $patientId,

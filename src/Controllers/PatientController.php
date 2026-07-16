@@ -4,93 +4,76 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Session;
+use App\Core\Security;
 use App\Models\Patient;
 use App\Models\MedicalRecord;
-use App\Core\Session;
+use App\Models\User;
 
-class PatientController extends Controller
+class PatientController
 {
+    private Session $session;
+    private Security $security;
     private Patient $model;
     private MedicalRecord $recordModel;
 
     public function __construct()
     {
+        $this->session = Session::getInstance();
+        $this->session->start();
+        $this->security = new Security();
         $this->model = new Patient();
         $this->recordModel = new MedicalRecord();
-    }
 
-    // ========== WEB ROUTES ==========
+        if (!$this->session->isLoggedIn()) {
+            header('Location: /login');
+            exit;
+        }
+    }
 
     public function profile(): void
     {
-        $userId = Session::get('user_id');
+        $userId = $this->session->getUserId();
         $patient = $this->model->findByUserId($userId);
-        $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
 
-        $this->view('patient.profile', ['user' => $user, 'patient' => $patient, 'currentPage' => 'profile']);
+        ob_start();
+        require __DIR__ . '/../Views/patient/profile.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/../Views/layouts/main.php';
     }
 
     public function updateProfile(): void
     {
-        $userId = Session::get('user_id');
+        $userId = $this->session->getUserId();
         $patient = $this->model->findByUserId($userId);
 
         if ($patient) {
-            $input = $this->getInput();
-            $this->model->update($patient['id'], $input);
+            $allowed = ['date_of_birth', 'phone', 'address', 'emergency_contact_name', 'emergency_contact_phone', 'blood_type', 'allergies'];
+            $data = [];
+            foreach ($allowed as $field) {
+                if (isset($_POST[$field])) {
+                    $data[$field] = $_POST[$field];
+                }
+            }
+            if (!empty($data)) {
+                $this->model->update($data);
+            }
         }
 
-        Session::flash('success', 'Profile updated successfully.');
-        $this->redirect('/patient/profile');
+        $this->session->setFlash('success', 'Profile updated successfully.');
+        header('Location: /patient/profile');
+        exit;
     }
 
     public function records(): void
     {
-        $userId = Session::get('user_id');
+        $userId = $this->session->getUserId();
         $patient = $this->model->findByUserId($userId);
-        $records = $patient ? $this->recordModel->findByPatientId($patient['id']) : [];
-        $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
+        $records = $patient ? $this->recordModel->findByPatientId($patient->getId()) : [];
 
-        $this->view('patient.records', ['user' => $user, 'records' => $records, 'currentPage' => 'records']);
-    }
-
-    // ========== API ROUTES ==========
-
-    public function index(): void
-    {
-        $patients = $this->model->all();
-        $this->json(['data' => $patients]);
-    }
-
-    public function show(string $id): void
-    {
-        $patient = $this->model->find((int) $id);
-
-        if (!$patient) {
-            $this->json(['error' => 'Patient not found'], 404);
-            return;
-        }
-
-        $this->json(['data' => $patient]);
-    }
-
-    public function store(): void
-    {
-        $input = $this->getInput();
-        $id = $this->model->create($input);
-        $this->json(['message' => 'Patient created', 'id' => $id], 201);
-    }
-
-    public function update(string $id): void
-    {
-        $input = $this->getInput();
-        $this->model->update((int) $id, $input);
-        $this->json(['message' => 'Patient updated']);
-    }
-
-    public function destroy(string $id): void
-    {
-        $this->model->delete((int) $id);
-        $this->json(['message' => 'Patient deleted']);
+        ob_start();
+        require __DIR__ . '/../Views/patient/records.php';
+        $content = ob_get_clean();
+        require __DIR__ . '/../Views/layouts/main.php';
     }
 }

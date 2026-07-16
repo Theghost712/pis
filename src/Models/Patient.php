@@ -42,8 +42,19 @@ class Patient
         return $this->hydrate($data);
     }
 
-    public function findByUserId(int $userId): ?self
+    public function find(int $id): ?array
     {
+        $db = Database::getInstance();
+        $stmt = $db->prepareAndExecute(
+            "SELECT * FROM patients WHERE id = ? LIMIT 1",
+            [$id]
+        );
+        return $stmt->fetch() ?: null;
+    }
+
+    public function findByUserId(?int $userId): ?self
+    {
+        if ($userId === null) return null;
         $db = Database::getInstance();
         $stmt = $db->prepareAndExecute(
             "SELECT * FROM patients WHERE user_id = ? LIMIT 1",
@@ -54,6 +65,13 @@ class Patient
             return null;
         }
         return $this->hydrate($data);
+    }
+
+    public function all(): array
+    {
+        $db = Database::getInstance();
+        $stmt = $db->prepareAndExecute("SELECT p.*, u.username, u.email, u.first_name, u.last_name FROM patients p JOIN users u ON p.user_id = u.id ORDER BY u.last_name ASC");
+        return $stmt->fetchAll();
     }
 
     public function findAll(array $filters = [], int $limit = 100, int $offset = 0): array
@@ -142,7 +160,7 @@ class Patient
         return $db->lastInsertId();
     }
 
-    public function update(array $data): bool
+    public function update(array $data, ?int $id = null): bool
     {
         $db = Database::getInstance();
         $fields = [];
@@ -162,18 +180,20 @@ class Patient
             return true;
         }
 
-        $params[] = $this->id;
+        $patientId = $id ?? $this->id;
+        $params[] = $patientId;
         $sql = "UPDATE patients SET " . implode(', ', $fields) . " WHERE id = ?";
         $db->prepareAndExecute($sql, $params);
         return true;
     }
 
-    public function delete(): bool
+    public function delete(?int $id = null): bool
     {
         $db = Database::getInstance();
+        $patientId = $id ?? $this->id;
         $db->prepareAndExecute(
             "DELETE FROM patients WHERE id = ?",
-            [$this->id]
+            [$patientId]
         );
         return true;
     }

@@ -42,8 +42,13 @@ class AdminController extends Controller
 
     public function users(): void
     {
+        if ($this->isApiRequest()) {
+            $this->handleApiUsers();
+            return;
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->createUser();
+            $this->createWebUser();
             return;
         }
 
@@ -56,6 +61,11 @@ class AdminController extends Controller
 
     public function createUser(): void
     {
+        $this->createWebUser();
+    }
+
+    private function createWebUser(): void
+    {
         $input = $this->getInput();
 
         if ($this->userModel->findByEmail($input['email'] ?? '')) {
@@ -65,9 +75,11 @@ class AdminController extends Controller
         }
 
         $this->userModel->create([
-            'name' => $input['name'] ?? '',
+            'username' => $input['username'] ?? $input['name'] ?? '',
             'email' => $input['email'] ?? '',
-            'password' => Security::hashPassword($input['password'] ?? ''),
+            'password' => $input['password'] ?? '',
+            'first_name' => $input['first_name'] ?? $input['name'] ?? '',
+            'last_name' => $input['last_name'] ?? '',
             'role' => $input['role'] ?? 'patient',
         ]);
 
@@ -77,6 +89,11 @@ class AdminController extends Controller
 
     public function audit(): void
     {
+        if ($this->isApiRequest()) {
+            $this->handleApiAudit();
+            return;
+        }
+
         $userId = Session::get('user_id');
         $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
 
@@ -92,13 +109,205 @@ class AdminController extends Controller
 
     public function reports(): void
     {
+        if ($this->isApiRequest()) {
+            $this->handleApiReports();
+            return;
+        }
+
         $userId = Session::get('user_id');
         $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
 
         $this->view('admin.reports', ['user' => $user, 'currentPage' => 'reports']);
     }
 
-    // ========== API ROUTES ==========
+    // ========== API ROUTES (internal handlers) ==========
+
+    private function handleApiUsers(): void
+    {
+        $user = $this->authService->getCurrentUser();
+
+        if (!$user || $user['role'] !== 'admin') {
+            $this->json(['error' => 'Forbidden'], 403);
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->storeUser();
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'PUT' || $_SERVER['REQUEST_METHOD'] === 'PATCH') {
+            $this->updateUserRole();
+            return;
+        }
+
+        $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+        $perPage = isset($_GET['per_page']) ? max(1, min(100, (int) $_GET['per_page'])) : 20;
+        $role = $_GET['role'] ?? null;
+
+        if ($role !== null) {
+            $validRoles = ['admin', 'provider', 'patient', 'system_admin'];
+
+            if (!in_array($role, $validRoles, true)) {
+                $this->json(['error' => 'Invalid role. Must be one of: ' . implode(', ', $validRoles)], 422);
+                return;
+            }
+
+            $users = $this->userModel->where(['role' => $role]);
+            $this->json(['data' => $users, 'role' => $role]);
+            return;
+        }
+
+        $result = $this->userModel->paginate($page, $perPage);
+        $this->json($result);
+    }
+
+    public function storeUser(): void
+    {
+        $input = $this->getInput();
+
+        $name = $input['name'] ?? '';
+        $email = $input['email'] ?? '';
+        $password = $input['password'] ?? '';
+        $role = $input['role'] ?? 'patient';
+
+        if (!$name || !$email || !$password) {
+            $this->json(['error' => 'Missing required fields: name, email, password'], 422);
+            return;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->json(['error' => 'Invalid email format'], 422);
+            return;
+        }
+
+        $validRoles = ['admin', 'provider', 'patient', 'system_admin'];
+
+        if (!in_array($role, $validRoles, true)) {
+            $this->json(['error' => 'Invalid role. Must be one of: ' . implode(', ', $validRoles)], 422);
+            return;
+        }
+
+        if ($this->userModel->findByEmail($email)) {
+            $this->json(['error' => 'Email already exists'], 409);
+            return;
+        }
+
+        $id = $this->userModel->create([
+            'username' => $input['username'] ?? $name,
+            'email' => $email,
+            'password' => $password,
+            'first_name' => $input['first_name'] ?? $name,
+            'last_name' => $input['last_name'] ?? '',
+            'role' => $role,
+        ]);
+
+        $this->auditService->log('create', 'user', $id, "Admin created user #{$id} ({$role})");
+
+        $this->json(['message' => 'User created', 'id' => $id], 201);
+    }
+
+    public function updateUserRole(): void
+    {
+        $input = $this->getInput();
+
+        $userId = $input['user_id'] ?? null;
+        $newRole = $input['role'] ?? null;
+
+        if (!$userId || !$newRole) {
+            $this->json(['error' => 'Missing required fields: user_id, role'], 422);
+            return;
+        }
+
+        $validRoles = ['admin', 'provider', 'patient', 'system_admin'];
+
+        if (!in_array($newRole, $validRoles, true)) {
+            $this->json(['error' => 'Invalid role. Must be one of: ' . implode(', ', $validRoles)], 422);
+            return;
+        }
+
+        $targetUser = $this->userModel->find((int) $userId);
+
+        if (!$targetUser) {
+            $this->json(['error' => 'User not found'], 404);
+            return;
+        }
+
+        $previousRole = $targetUser['role'];
+
+        $this->userModel->update((int) $userId, ['role' => $newRole]);
+
+        $this->auditService->log(
+            'update_role',
+            'user',
+            (int) $userId,
+            "Changed user #{$userId} role from {$previousRole} to {$newRole}"
+        );
+
+        $this->json(['message' => 'User role updated', 'previous_role' => $previousRole, 'new_role' => $newRole]);
+    }
+
+    private function handleApiAudit(): void
+    {
+        $user = $this->authService->getCurrentUser();
+
+        if (!$user || $user['role'] !== 'admin') {
+            $this->json(['error' => 'Forbidden'], 403);
+            return;
+        }
+
+        $filters = [];
+
+        if (!empty($_GET['user_id'])) {
+            $filters['user_id'] = (int) $_GET['user_id'];
+        }
+
+        if (!empty($_GET['action'])) {
+            $filters['action'] = $_GET['action'];
+        }
+
+        if (!empty($_GET['resource_type'])) {
+            $filters['resource_type'] = $_GET['resource_type'];
+        }
+
+        $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+        $perPage = isset($_GET['per_page']) ? max(1, min(100, (int) $_GET['per_page'])) : 50;
+
+        $result = $this->auditService->getLogs($filters, $page, $perPage);
+
+        $this->auditService->log('view', 'audit_logs', null, "Admin viewed audit logs (page {$page})");
+
+        $this->json($result);
+    }
+
+    private function handleApiReports(): void
+    {
+        $user = $this->authService->getCurrentUser();
+
+        if (!$user || $user['role'] !== 'admin') {
+            $this->json(['error' => 'Forbidden'], 403);
+            return;
+        }
+
+        $reportType = $_GET['type'] ?? 'overview';
+
+        $allUsers = $this->userModel->all();
+        $allPatients = $this->patientModel->all();
+        $allProviders = $this->providerModel->all();
+        $allRecords = $this->medicalRecordModel->all();
+
+        $report = match ($reportType) {
+            'users' => $this->generateUserReport($allUsers),
+            'records' => $this->generateRecordReport($allRecords),
+            'providers' => $this->generateProviderReport($allProviders),
+            'patients' => $this->generatePatientReport($allPatients),
+            default => $this->generateOverviewReport($allUsers, $allPatients, $allProviders, $allRecords),
+        };
+
+        $this->auditService->log('view', 'report', null, "Generated {$reportType} report");
+
+        $this->json(['report_type' => $reportType, 'generated_at' => date('Y-m-d H:i:s'), 'data' => $report]);
+    }
 
     public function dashboardApi(): void
     {
@@ -137,189 +346,42 @@ class AdminController extends Controller
         ]);
     }
 
-    public function users(): void
+    public function settings(): void
     {
-        $user = $this->authService->getCurrentUser();
+        $userId = Session::get('user_id');
+        $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
 
-        if (!$user || $user['role'] !== 'admin') {
-            $this->json(['error' => 'Forbidden'], 403);
-            return;
-        }
+        $settings = [
+            'session_timeout' => $_ENV['SESSION_TIMEOUT'] ?? '300',
+            'max_login_attempts' => $_ENV['MAX_LOGIN_ATTEMPTS'] ?? '5',
+            'min_password_length' => $_ENV['MIN_PASSWORD_LENGTH'] ?? '8',
+            'require_mfa' => false,
+        ];
 
-        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $this->storeUser();
-            return;
-        }
-
-        if ($_SERVER['REQUEST_METHOD'] === 'PUT' || $_SERVER['REQUEST_METHOD'] === 'PATCH') {
-            $this->updateUserRole();
-            return;
-        }
-
-        $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
-        $perPage = isset($_GET['per_page']) ? max(1, min(100, (int) $_GET['per_page'])) : 20;
-        $role = $_GET['role'] ?? null;
-
-        if ($role !== null) {
-            $validRoles = ['admin', 'provider', 'patient'];
-
-            if (!in_array($role, $validRoles, true)) {
-                $this->json(['error' => 'Invalid role. Must be one of: ' . implode(', ', $validRoles)], 422);
-                return;
-            }
-
-            $users = $this->userModel->where(['role' => $role]);
-            $this->json(['data' => $users, 'role' => $role]);
-            return;
-        }
-
-        $result = $this->userModel->paginate($page, $perPage);
-        $this->json($result);
+        $this->view('admin.settings', ['user' => $user, 'settings' => $settings, 'currentPage' => 'settings']);
     }
 
-    public function storeUser(): void
+    public function updateSettings(): void
     {
-        $input = $this->getInput();
+        $userId = Session::get('user_id');
+        $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
 
-        $name = $input['name'] ?? '';
-        $email = $input['email'] ?? '';
-        $password = $input['password'] ?? '';
-        $role = $input['role'] ?? 'patient';
+        $settings = [
+            'session_timeout' => $_POST['session_timeout'] ?? '300',
+            'max_login_attempts' => $_POST['max_login_attempts'] ?? '5',
+            'min_password_length' => $_POST['min_password_length'] ?? '8',
+            'require_mfa' => isset($_POST['require_mfa']),
+        ];
 
-        if (!$name || !$email || !$password) {
-            $this->json(['error' => 'Missing required fields: name, email, password'], 422);
-            return;
-        }
+        $this->auditService->log('update', 'settings', null, 'Admin updated system settings');
 
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $this->json(['error' => 'Invalid email format'], 422);
-            return;
-        }
-
-        $validRoles = ['admin', 'provider', 'patient'];
-
-        if (!in_array($role, $validRoles, true)) {
-            $this->json(['error' => 'Invalid role. Must be one of: ' . implode(', ', $validRoles)], 422);
-            return;
-        }
-
-        if ($this->userModel->findByEmail($email)) {
-            $this->json(['error' => 'Email already exists'], 409);
-            return;
-        }
-
-        $id = $this->userModel->create([
-            'name' => $name,
-            'email' => $email,
-            'password' => $this->authService->hashPassword($password),
-            'role' => $role,
-        ]);
-
-        $this->auditService->log('create', 'user', $id, "Admin created user #{$id} ({$role})");
-
-        $this->json(['message' => 'User created', 'id' => $id], 201);
+        $this->view('admin.settings', ['user' => $user, 'settings' => $settings, 'currentPage' => 'settings']);
     }
 
-    public function updateUserRole(): void
+    private function isApiRequest(): bool
     {
-        $input = $this->getInput();
-
-        $userId = $input['user_id'] ?? null;
-        $newRole = $input['role'] ?? null;
-
-        if (!$userId || !$newRole) {
-            $this->json(['error' => 'Missing required fields: user_id, role'], 422);
-            return;
-        }
-
-        $validRoles = ['admin', 'provider', 'patient'];
-
-        if (!in_array($newRole, $validRoles, true)) {
-            $this->json(['error' => 'Invalid role. Must be one of: ' . implode(', ', $validRoles)], 422);
-            return;
-        }
-
-        $targetUser = $this->userModel->find((int) $userId);
-
-        if (!$targetUser) {
-            $this->json(['error' => 'User not found'], 404);
-            return;
-        }
-
-        $previousRole = $targetUser['role'];
-
-        $this->userModel->update((int) $userId, ['role' => $newRole]);
-
-        $this->auditService->log(
-            'update_role',
-            'user',
-            (int) $userId,
-            "Changed user #{$userId} role from {$previousRole} to {$newRole}"
-        );
-
-        $this->json(['message' => 'User role updated', 'previous_role' => $previousRole, 'new_role' => $newRole]);
-    }
-
-    public function audit(): void
-    {
-        $user = $this->authService->getCurrentUser();
-
-        if (!$user || $user['role'] !== 'admin') {
-            $this->json(['error' => 'Forbidden'], 403);
-            return;
-        }
-
-        $filters = [];
-
-        if (!empty($_GET['user_id'])) {
-            $filters['user_id'] = (int) $_GET['user_id'];
-        }
-
-        if (!empty($_GET['action'])) {
-            $filters['action'] = $_GET['action'];
-        }
-
-        if (!empty($_GET['resource_type'])) {
-            $filters['resource_type'] = $_GET['resource_type'];
-        }
-
-        $page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
-        $perPage = isset($_GET['per_page']) ? max(1, min(100, (int) $_GET['per_page'])) : 50;
-
-        $result = $this->auditService->getLogs($filters, $page, $perPage);
-
-        $this->auditService->log('view', 'audit_logs', null, "Admin viewed audit logs (page {$page})");
-
-        $this->json($result);
-    }
-
-    public function reports(): void
-    {
-        $user = $this->authService->getCurrentUser();
-
-        if (!$user || $user['role'] !== 'admin') {
-            $this->json(['error' => 'Forbidden'], 403);
-            return;
-        }
-
-        $reportType = $_GET['type'] ?? 'overview';
-
-        $allUsers = $this->userModel->all();
-        $allPatients = $this->patientModel->all();
-        $allProviders = $this->providerModel->all();
-        $allRecords = $this->medicalRecordModel->all();
-
-        $report = match ($reportType) {
-            'users' => $this->generateUserReport($allUsers),
-            'records' => $this->generateRecordReport($allRecords),
-            'providers' => $this->generateProviderReport($allProviders),
-            'patients' => $this->generatePatientReport($allPatients),
-            default => $this->generateOverviewReport($allUsers, $allPatients, $allProviders, $allRecords),
-        };
-
-        $this->auditService->log('view', 'report', null, "Generated {$reportType} report");
-
-        $this->json(['report_type' => $reportType, 'generated_at' => date('Y-m-d H:i:s'), 'data' => $report]);
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        return str_starts_with($uri, '/api/');
     }
 
     private function generateUserReport(array $users): array

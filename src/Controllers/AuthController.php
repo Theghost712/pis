@@ -41,6 +41,9 @@ class AuthController
             header('Location: ' . $this->getDashboardRedirect());
             exit;
         }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
         require_once __DIR__ . '/../Views/auth/login.php';
     }
 
@@ -158,6 +161,9 @@ class AuthController
         if ($this->session->isLoggedIn()) {
             header('Location: ' . $this->getDashboardRedirect());
             exit;
+        }
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
         }
         require_once __DIR__ . '/../Views/auth/register.php';
     }

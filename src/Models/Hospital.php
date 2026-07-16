@@ -28,6 +28,13 @@ class Hospital
         return $this->hydrate($data);
     }
 
+    public function all(): array
+    {
+        $db = Database::getInstance();
+        $stmt = $db->prepareAndExecute("SELECT * FROM hospitals ORDER BY name ASC");
+        return $stmt->fetchAll();
+    }
+
     public function findAll(): array
     {
         $db = Database::getInstance();

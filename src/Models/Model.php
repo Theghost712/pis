@@ -9,7 +9,7 @@ use PDO;
 
 abstract class Model
 {
-    protected PDO $db;
+    protected Database $db;
     protected string $table;
     protected string $primaryKey = 'id';
 
@@ -18,16 +18,20 @@ abstract class Model
         $this->db = Database::getInstance();
     }
 
+    protected function getPdo(): PDO
+    {
+        return $this->db->getConnection();
+    }
+
     public function all(): array
     {
-        $stmt = $this->db->query("SELECT * FROM {$this->table}");
+        $stmt = $this->db->prepareAndExecute("SELECT * FROM {$this->table}");
         return $stmt->fetchAll();
     }
 
     public function find(int $id): ?array
     {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id");
-        $stmt->execute(['id' => $id]);
+        $stmt = $this->db->prepareAndExecute("SELECT * FROM {$this->table} WHERE {$this->primaryKey} = ?", [$id]);
         $result = $stmt->fetch();
         return $result ?: null;
     }
@@ -35,34 +39,31 @@ abstract class Model
     public function create(array $data): int
     {
         $columns = implode(', ', array_keys($data));
-        $placeholders = ':' . implode(', :', array_keys($data));
+        $placeholders = implode(', ', array_fill(0, count($data), '?'));
 
-        $stmt = $this->db->prepare("INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})");
-        $stmt->execute($data);
-
-        return (int) $this->db->lastInsertId();
+        $stmt = $this->db->prepareAndExecute("INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})", array_values($data));
+        return $this->db->lastInsertId();
     }
 
     public function update(int $id, array $data): bool
     {
-        $set = implode(', ', array_map(fn($col) => "{$col} = :{$col}", array_keys($data)));
-        $data['id'] = $id;
+        $set = implode(', ', array_map(fn($col) => "{$col} = ?", array_keys($data)));
+        $params = array_merge(array_values($data), [$id]);
 
-        $stmt = $this->db->prepare("UPDATE {$this->table} SET {$set} WHERE {$this->primaryKey} = :id");
-        return $stmt->execute($data);
+        $stmt = $this->db->prepareAndExecute("UPDATE {$this->table} SET {$set} WHERE {$this->primaryKey} = ?", $params);
+        return $stmt->rowCount() > 0;
     }
 
     public function delete(int $id): bool
     {
-        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE {$this->primaryKey} = :id");
-        return $stmt->execute(['id' => $id]);
+        $stmt = $this->db->prepareAndExecute("DELETE FROM {$this->table} WHERE {$this->primaryKey} = ?", [$id]);
+        return $stmt->rowCount() > 0;
     }
 
     public function where(array $conditions): array
     {
-        $where = implode(' AND ', array_map(fn($col) => "{$col} = :{$col}", array_keys($conditions)));
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE {$where}");
-        $stmt->execute($conditions);
+        $where = implode(' AND ', array_map(fn($col) => "{$col} = ?", array_keys($conditions)));
+        $stmt = $this->db->prepareAndExecute("SELECT * FROM {$this->table} WHERE {$where}", array_values($conditions));
         return $stmt->fetchAll();
     }
 
@@ -70,13 +71,10 @@ abstract class Model
     {
         $offset = ($page - 1) * $perPage;
 
-        $countStmt = $this->db->query("SELECT COUNT(*) FROM {$this->table}");
+        $countStmt = $this->db->prepareAndExecute("SELECT COUNT(*) FROM {$this->table}");
         $total = (int) $countStmt->fetchColumn();
 
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} LIMIT :limit OFFSET :offset");
-        $stmt->bindValue(':limit', $perPage, PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
-        $stmt->execute();
+        $stmt = $this->db->prepareAndExecute("SELECT * FROM {$this->table} LIMIT ? OFFSET ?", [$perPage, $offset]);
 
         return [
             'data' => $stmt->fetchAll(),

@@ -6,75 +6,71 @@ namespace App\Models;
 
 class Consent extends Model
 {
-    protected string $table = 'consents';
+    protected string $table = 'consent';
 
     public function create(array $data): int
     {
-        $stmt = $this->db->prepare("
+        $this->db->prepareAndExecute("
             INSERT INTO {$this->table} (patient_id, provider_id, consent_type, status, description, granted_at, revoked_at, expires_at, created_at)
-            VALUES (:patient_id, :provider_id, :consent_type, :status, :description, :granted_at, :revoked_at, :expires_at, NOW())
-        ");
-
-        $stmt->execute([
-            'patient_id' => $data['patient_id'],
-            'provider_id' => $data['provider_id'] ?? null,
-            'consent_type' => $data['consent_type'],
-            'status' => $data['status'] ?? 'pending',
-            'description' => $data['description'] ?? null,
-            'granted_at' => $data['granted_at'] ?? null,
-            'revoked_at' => $data['revoked_at'] ?? null,
-            'expires_at' => $data['expires_at'] ?? null,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        ", [
+            $data['patient_id'],
+            $data['provider_id'] ?? null,
+            $data['consent_type'],
+            $data['status'] ?? 'pending',
+            $data['description'] ?? null,
+            $data['granted_at'] ?? null,
+            $data['revoked_at'] ?? null,
+            $data['expires_at'] ?? null,
         ]);
 
-        return (int) $this->db->lastInsertId();
+        return $this->db->lastInsertId();
     }
 
     public function findByPatientId(int $patientId): array
     {
-        $stmt = $this->db->prepare("
-            SELECT c.*, pr.name as provider_name
+        $stmt = $this->db->prepareAndExecute("
+            SELECT c.*, u.first_name, u.last_name, p.specialization
             FROM {$this->table} c
             LEFT JOIN providers p ON c.provider_id = p.id
-            LEFT JOIN users pr ON p.user_id = pr.id
-            WHERE c.patient_id = :patient_id
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE c.patient_id = ?
             ORDER BY c.created_at DESC
-        ");
-        $stmt->execute(['patient_id' => $patientId]);
+        ", [$patientId]);
         return $stmt->fetchAll();
     }
 
     public function findByProviderId(int $providerId): array
     {
-        $stmt = $this->db->prepare("
-            SELECT c.*, pt.name as patient_name
+        $stmt = $this->db->prepareAndExecute("
+            SELECT c.*, u.first_name, u.last_name, pa.date_of_birth, pa.gender
             FROM {$this->table} c
             LEFT JOIN patients pa ON c.patient_id = pa.id
-            LEFT JOIN users pt ON pa.user_id = pt.id
-            WHERE c.provider_id = :provider_id
+            LEFT JOIN users u ON pa.user_id = u.id
+            WHERE c.provider_id = ?
             ORDER BY c.created_at DESC
-        ");
-        $stmt->execute(['provider_id' => $providerId]);
+        ", [$providerId]);
         return $stmt->fetchAll();
     }
 
     public function findByStatus(string $status): array
     {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE status = :status ORDER BY created_at DESC");
-        $stmt->execute(['status' => $status]);
+        $stmt = $this->db->prepareAndExecute(
+            "SELECT * FROM {$this->table} WHERE status = ? ORDER BY created_at DESC",
+            [$status]
+        );
         return $stmt->fetchAll();
     }
 
     public function updateStatus(int $id, string $status, ?string $timestampColumn = null): bool
     {
-        $data = ['status' => $status, 'id' => $id];
-        $sql = "UPDATE {$this->table} SET status = :status";
-
         if ($timestampColumn !== null) {
-            $sql .= ", {$timestampColumn} = NOW()";
+            $sql = "UPDATE {$this->table} SET status = ?, {$timestampColumn} = NOW() WHERE id = ?";
+            $stmt = $this->db->prepareAndExecute($sql, [$status, $id]);
+        } else {
+            $sql = "UPDATE {$this->table} SET status = ? WHERE id = ?";
+            $stmt = $this->db->prepareAndExecute($sql, [$status, $id]);
         }
-
-        $sql .= " WHERE id = :id";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute($data);
+        return $stmt->rowCount() > 0;
     }
 }

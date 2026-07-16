@@ -11,7 +11,7 @@ use App\Models\Consent;
 use App\Models\AuditLog;
 use App\Core\Database;
 
-class DashboardController
+class DashboardController extends Controller
 {
     private Session $session;
     private User $userModel;
@@ -57,7 +57,7 @@ class DashboardController
             'recent_visits' => count($recentRecords)
         ];
 
-        require_once __DIR__ . '/../Views/patient/dashboard.php';
+        $this->view('patient.dashboard', ['patientData' => $patientData, 'stats' => $stats, 'recentRecords' => $recentRecords, 'activeConsents' => $activeConsents, 'currentPage' => 'dashboard']);
     }
 
     public function providerDashboard(): void
@@ -86,7 +86,7 @@ class DashboardController
             'total_referrals' => count($referrals)
         ];
 
-        require_once __DIR__ . '/../Views/provider/dashboard.php';
+        $this->view('provider.dashboard', ['stats' => $stats, 'currentPage' => 'dashboard']);
     }
 
     public function adminDashboard(): void
@@ -136,6 +136,16 @@ class DashboardController
             'new_users' => $newUsers
         ];
 
-        require_once __DIR__ . '/../Views/admin/dashboard.php';
+        $this->view('admin.dashboard', [
+            'totalUsers' => $totalUsers,
+            'totalPatients' => $totalPatients,
+            'totalProviders' => $totalProviders,
+            'totalRecords' => $totalRecords,
+            'activeConsents' => $activeConsents,
+            'newUsers' => $newUsers,
+            'recentAuditLogs' => $recentLogs ?? [],
+            'systemHealth' => ['database' => 'healthy', 'storage' => 'healthy', 'uptime' => '99.9%'],
+            'currentPage' => 'dashboard',
+        ]);
     }
 } 

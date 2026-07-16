@@ -2,20 +2,15 @@
 
 declare(strict_types=1);
 
-use Dotenv\Dotenv;
-
-$dotenv = Dotenv::createImmutable(BASE_PATH);
-$dotenv->load();
-
 return [
     'default' => 'mysql',
     'connections' => [
         'mysql' => [
             'driver' => 'mysql',
-            'host' => $_ENV['DB_HOST'],
-            'database' => $_ENV['DB_NAME'],
-            'username' => $_ENV['DB_USER'],
-            'password' => $_ENV['DB_PASSWORD'],
+            'host' => $_ENV['DB_HOST'] ?? '127.0.0.1',
+            'database' => $_ENV['DB_NAME'] ?? 'healthcare_db',
+            'username' => $_ENV['DB_USER'] ?? 'root',
+            'password' => $_ENV['DB_PASSWORD'] ?? '',
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',

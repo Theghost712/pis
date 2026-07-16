@@ -15,7 +15,7 @@ ob_start();
                 </p>
                 <form method="POST" action="/reset-password" class="validated">
                     <input type="hidden" name="token" value="<?php echo $token; ?>">
-                    <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo $_SESSION['csrf_token'] ?? ''; ?>">
                     <div class="mb-3">
                         <label for="password" class="form-label">New Password</label>
                         <input type="password" class="form-control" id="password" name="password" 

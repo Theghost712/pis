@@ -3,33 +3,31 @@
 namespace App\Controllers;
 
 use App\Core\Session;
-use App\Core\Validation;
+use App\Core\Security;
+use App\Core\Database;
 use App\Models\Patient;
 use App\Models\Provider;
 use App\Models\Consent;
 use App\Models\AuditLog;
-use App\Services\NotificationService;
 
 class ConsentController
 {
     private Session $session;
-    private Validation $validation;
+    private Security $security;
     private Patient $patientModel;
     private Provider $providerModel;
     private Consent $consentModel;
     private AuditLog $auditLog;
-    private NotificationService $notification;
 
     public function __construct()
     {
         $this->session = Session::getInstance();
         $this->session->start();
-        $this->validation = new Validation();
+        $this->security = new Security();
         $this->patientModel = new Patient();
         $this->providerModel = new Provider();
         $this->consentModel = new Consent();
         $this->auditLog = new AuditLog();
-        $this->notification = new NotificationService();
         
         if (!$this->session->isLoggedIn()) {
             header('Location: /login');
@@ -49,6 +47,7 @@ class ConsentController
 
         $consents = $this->consentModel->findByPatientId($patient->getId());
         $availableProviders = $this->getAvailableProviders($patient->getId());
+        $csrfToken = $this->security->generateCSRFToken();
         
         require_once __DIR__ . '/../Views/patient/consent.php';
     }
@@ -56,19 +55,8 @@ class ConsentController
     public function create(): void
     {
         $data = $_POST;
+        $csrfToken = $data['csrf_token'] ?? '';
         
-        $rules = [
-            'provider_id' => 'required|numeric|exists:providers,id',
-            'scope' => 'required|min:5',
-            'expires_at' => 'required|date'
-        ];
-        
-        if (!$this->validation->validate($data, $rules)) {
-            $this->session->setFlash('error', $this->validation->getFirstError());
-            header('Location: /consent');
-            exit;
-        }
-
         $userId = $this->session->getUserId();
         $patient = $this->patientModel->findByUserId($userId);
         
@@ -78,22 +66,17 @@ class ConsentController
             exit;
         }
 
-        $provider = $this->providerModel->findById($data['provider_id']);
-        if (!$provider) {
-            $this->session->setFlash('error', 'Provider not found.');
+        $providerId = (int)($data['provider_id'] ?? 0);
+        $scope = $data['scope'] ?? '';
+        $expiresAt = $data['expires_at'] ?? '';
+
+        if (!$providerId || !$scope || !$expiresAt) {
+            $this->session->setFlash('error', 'All fields are required.');
             header('Location: /consent');
             exit;
         }
 
-        // Check if consent already exists
-        if (Consent::hasActiveConsent($patient->getId(), $data['provider_id'])) {
-            $this->session->setFlash('error', 'Active consent already exists for this provider.');
-            header('Location: /consent');
-            exit;
-        }
-
-        // Check if expiration date is in the future
-        if (strtotime($data['expires_at']) < time()) {
+        if (strtotime($expiresAt) < time()) {
             $this->session->setFlash('error', 'Expiration date must be in the future.');
             header('Location: /consent');
             exit;
@@ -101,9 +84,9 @@ class ConsentController
 
         $consentId = $this->consentModel->create([
             'patient_id' => $patient->getId(),
-            'provider_id' => $data['provider_id'],
-            'scope' => $data['scope'],
-            'expires_at' => $data['expires_at']
+            'provider_id' => $providerId,
+            'scope' => $scope,
+            'expires_at' => $expiresAt,
         ]);
 
         $this->auditLog->log([
@@ -112,26 +95,12 @@ class ConsentController
             'resource_type' => 'consent',
             'resource_id' => $consentId,
             'details' => [
-                'provider_id' => $data['provider_id'],
-                'scope' => $data['scope'],
-                'expires_at' => $data['expires_at']
+                'provider_id' => $providerId,
+                'scope' => $scope,
+                'expires_at' => $expiresAt,
             ],
-            'status' => 'success'
+            'status' => 'success',
         ]);
-
-        // Send notification to provider
-        $providerUser = $provider->getUser();
-        if ($providerUser) {
-            $this->notification->sendConsentNotification(
-                $providerUser->getEmail(),
-                $providerUser->getFullName(),
-                [
-                    'patient_name' => $patient->getFullName(),
-                    'scope' => $data['scope'],
-                    'expires_at' => date('M d, Y', strtotime($data['expires_at']))
-                ]
-            );
-        }
 
         $this->session->setFlash('success', 'Consent granted successfully.');
         header('Location: /consent');
@@ -140,7 +109,7 @@ class ConsentController
 
     public function revoke(): void
     {
-        $consentId = $_POST['consent_id'] ?? null;
+        $consentId = (int)($_POST['consent_id'] ?? 0);
         
         if (!$consentId) {
             $this->session->setFlash('error', 'Consent ID required.');
@@ -157,22 +126,22 @@ class ConsentController
             exit;
         }
 
-        $consent = $this->consentModel->findById($consentId);
+        $consentData = $this->consentModel->find($consentId);
         
-        if (!$consent || $consent->getPatientId() !== $patient->getId()) {
+        if (!$consentData || (int)$consentData['patient_id'] !== $patient->getId()) {
             $this->session->setFlash('error', 'Consent not found or unauthorized.');
             header('Location: /consent');
             exit;
         }
 
-        $consent->revoke();
+        $this->consentModel->updateStatus($consentId, 'revoked', 'updated_at');
 
         $this->auditLog->log([
             'user_id' => $userId,
             'action' => 'consent_revoked',
             'resource_type' => 'consent',
             'resource_id' => $consentId,
-            'status' => 'success'
+            'status' => 'success',
         ]);
 
         $this->session->setFlash('success', 'Consent revoked successfully.');
@@ -182,7 +151,7 @@ class ConsentController
 
     public function renew(): void
     {
-        $consentId = $_POST['consent_id'] ?? null;
+        $consentId = (int)($_POST['consent_id'] ?? 0);
         $days = (int)($_POST['days'] ?? 365);
         
         if (!$consentId) {
@@ -206,15 +175,20 @@ class ConsentController
             exit;
         }
 
-        $consent = $this->consentModel->findById($consentId);
+        $consentData = $this->consentModel->find($consentId);
         
-        if (!$consent || $consent->getPatientId() !== $patient->getId()) {
+        if (!$consentData || (int)$consentData['patient_id'] !== $patient->getId()) {
             $this->session->setFlash('error', 'Consent not found or unauthorized.');
             header('Location: /consent');
             exit;
         }
 
-        $consent->renew($days);
+        $newExpiry = date('Y-m-d H:i:s', time() + ($days * 86400));
+        $db = Database::getInstance();
+        $db->prepareAndExecute(
+            "UPDATE consent SET status = 'active', expires_at = ?, updated_at = NOW() WHERE id = ?",
+            [$newExpiry, $consentId]
+        );
 
         $this->auditLog->log([
             'user_id' => $userId,
@@ -222,7 +196,7 @@ class ConsentController
             'resource_type' => 'consent',
             'resource_id' => $consentId,
             'details' => ['days' => $days],
-            'status' => 'success'
+            'status' => 'success',
         ]);
 
         $this->session->setFlash('success', 'Consent renewed successfully.');
@@ -232,7 +206,7 @@ class ConsentController
 
     private function getAvailableProviders(int $patientId): array
     {
-        $db = \App\Core\Database::getInstance();
+        $db = Database::getInstance();
         $stmt = $db->prepareAndExecute(
             "SELECT p.*, u.first_name, u.last_name, h.name as hospital_name 
              FROM providers p
@@ -248,4 +222,4 @@ class ConsentController
         );
         return $stmt->fetchAll();
     }
-} 
+}

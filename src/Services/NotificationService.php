@@ -98,6 +98,18 @@ class NotificationService
         return $this->sendEmail($email, $name, $subject, $body);
     }
 
+    public function send(int $userId, string $subject, string $message, string $type = 'general'): bool
+    {
+        $notificationModel = new \App\Models\Notification();
+        $notificationModel->create([
+            'user_id' => $userId,
+            'type' => $type,
+            'subject' => $subject,
+            'message' => $message,
+        ]);
+        return true;
+    }
+
     private function sendEmail(string $email, string $name, string $subject, string $body): bool
     {
         try {

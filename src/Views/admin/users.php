@@ -34,7 +34,7 @@ $currentRoleFilter = $currentRoleFilter ?? '';
             <?php else: ?>
                 <?php foreach ($users as $u): ?>
                     <tr style="border-bottom:1px solid #f0f0f0;">
-                        <td style="padding:14px 20px;font-size:14px;color:#333;font-weight:500;"><?= htmlspecialchars($u['name'] ?? '') ?></td>
+                        <td style="padding:14px 20px;font-size:14px;color:#333;font-weight:500;"><?= htmlspecialchars(($u['first_name'] ?? '') . ' ' . ($u['last_name'] ?? '')) ?></td>
                         <td style="padding:14px 20px;font-size:14px;color:#666;"><?= htmlspecialchars($u['email'] ?? '') ?></td>
                         <td style="padding:14px 20px;">
                             <?php
@@ -44,7 +44,7 @@ $currentRoleFilter = $currentRoleFilter ?? '';
                             ?>
                             <span style="background:<?= $rc[0] ?>;color:<?= $rc[1] ?>;padding:3px 10px;border-radius:4px;font-size:12px;font-weight:600;text-transform:capitalize;"><?= htmlspecialchars($role) ?></span>
                         </td>
-                        <td style="padding:14px 20px;font-size:14px;color:#666;"><?= htmlspecialchars($u['created'] ?? '') ?></td>
+                        <td style="padding:14px 20px;font-size:14px;color:#666;"><?= htmlspecialchars($u['created_at'] ?? '') ?></td>
                         <td style="padding:14px 20px;">
                             <div style="display:flex;gap:8px;">
                                 <a href="/admin/users/<?= (int)($u['id'] ?? 0) ?>/edit" style="padding:5px 12px;background:#e3f2fd;color:#1565c0;border-radius:5px;text-decoration:none;font-size:12px;font-weight:600;">Edit</a>

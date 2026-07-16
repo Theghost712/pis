@@ -174,6 +174,13 @@ class Security
         return bin2hex(random_bytes(32));
     }
 
+    public static function csrfField(): string
+    {
+        $token = bin2hex(random_bytes(32));
+        $_SESSION['csrf_token'] = $token;
+        return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token) . '">';
+    }
+
     public function validatePassword(string $password): bool
     {
         $pattern = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/';

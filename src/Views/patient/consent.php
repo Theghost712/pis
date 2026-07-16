@@ -25,7 +25,7 @@ ob_start();
                     </div>
                 <?php else: ?>
                     <form method="POST" action="/consent/create" class="validated">
-                        <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
+                        <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                         <div class="mb-3">
                             <label for="provider_id" class="form-label">Select Provider</label>
                             <select class="form-select" id="provider_id" name="provider_id" required>
@@ -110,7 +110,7 @@ ob_start();
                                         <td>
                                             <?php if ($isActive): ?>
                                                 <form method="POST" action="/consent/revoke" class="d-inline">
-                                                    <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                                                     <input type="hidden" name="consent_id" value="<?php echo $consent['id']; ?>">
                                                     <button type="submit" class="btn btn-sm btn-danger" 
                                                             onclick="return confirm('Are you sure you want to revoke this consent?')">
@@ -119,7 +119,7 @@ ob_start();
                                                 </form>
                                                 <?php if (strtotime($consent['expires_at']) <= time() + 30 * 86400): ?>
                                                     <form method="POST" action="/consent/renew" class="d-inline">
-                                                        <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
+                                                        <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                                                         <input type="hidden" name="consent_id" value="<?php echo $consent['id']; ?>">
                                                         <input type="hidden" name="days" value="365">
                                                         <button type="submit" class="btn btn-sm btn-success">
@@ -129,7 +129,7 @@ ob_start();
                                                 <?php endif; ?>
                                             <?php elseif ($consent['status'] === 'expired' || $isExpired): ?>
                                                 <form method="POST" action="/consent/renew" class="d-inline">
-                                                    <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
+                                                    <input type="hidden" name="csrf_token" value="<?php echo $csrfToken; ?>">
                                                     <input type="hidden" name="consent_id" value="<?php echo $consent['id']; ?>">
                                                     <input type="hidden" name="days" value="365">
                                                     <button type="submit" class="btn btn-sm btn-primary">

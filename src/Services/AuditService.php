@@ -8,7 +8,7 @@ use App\Core\Database;
 
 class AuditService
 {
-    private \PDO $db;
+    private Database $db;
 
     public function __construct()
     {
@@ -22,67 +22,65 @@ class AuditService
         ?string $description = null,
         ?int $userId = null
     ): void {
-        $stmt = $this->db->prepare("
+        $pdo = $this->db->getConnection();
+        $stmt = $pdo->prepare("
             INSERT INTO audit_logs (user_id, action, resource_type, resource_id, description, ip_address, user_agent, created_at)
-            VALUES (:user_id, :action, :resource_type, :resource_id, :description, :ip_address, :user_agent, NOW())
+            VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
         ");
 
         $stmt->execute([
-            'user_id' => $userId ?? $this->getCurrentUserId(),
-            'action' => $action,
-            'resource_type' => $resourceType,
-            'resource_id' => $resourceId,
-            'description' => $description,
-            'ip_address' => $this->getClientIp(),
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+            $userId ?? $this->getCurrentUserId(),
+            $action,
+            $resourceType,
+            $resourceId,
+            $description,
+            $this->getClientIp(),
+            $_SERVER['HTTP_USER_AGENT'] ?? null,
         ]);
     }
 
     public function getLogs(array $filters = [], int $page = 1, int $perPage = 50): array
     {
+        $pdo = $this->db->getConnection();
         $where = [];
         $params = [];
 
         if (!empty($filters['user_id'])) {
-            $where[] = 'user_id = :user_id';
-            $params['user_id'] = $filters['user_id'];
+            $where[] = 'al.user_id = ?';
+            $params[] = $filters['user_id'];
         }
 
         if (!empty($filters['action'])) {
-            $where[] = 'action = :action';
-            $params['action'] = $filters['action'];
+            $where[] = 'al.action = ?';
+            $params[] = $filters['action'];
         }
 
         if (!empty($filters['resource_type'])) {
-            $where[] = 'resource_type = :resource_type';
-            $params['resource_type'] = $filters['resource_type'];
+            $where[] = 'al.resource_type = ?';
+            $params[] = $filters['resource_type'];
         }
 
         $whereClause = $where ? 'WHERE ' . implode(' AND ', $where) : '';
         $offset = ($page - 1) * $perPage;
 
-        $countStmt = $this->db->prepare("SELECT COUNT(*) FROM audit_logs {$whereClause}");
+        $countStmt = $pdo->prepare("SELECT COUNT(*) FROM audit_logs al {$whereClause}");
         $countStmt->execute($params);
         $total = (int) $countStmt->fetchColumn();
 
-        $stmt = $this->db->prepare("
-            SELECT al.*, u.name as user_name, u.email as user_email
+        $stmt = $pdo->prepare("
+            SELECT al.*, u.username, CONCAT(u.first_name, ' ', u.last_name) as user_name, u.email as user_email
             FROM audit_logs al
             LEFT JOIN users u ON al.user_id = u.id
             {$whereClause}
             ORDER BY al.created_at DESC
-            LIMIT :limit OFFSET :offset
+            LIMIT ? OFFSET ?
         ");
 
-        foreach ($params as $key => $value) {
-            $stmt->bindValue(":{$key}", $value);
-        }
-        $stmt->bindValue(':limit', $perPage, \PDO::PARAM_INT);
-        $stmt->bindValue(':offset', $offset, \PDO::PARAM_INT);
-        $stmt->execute();
+        $allParams = array_merge($params, [$perPage, $offset]);
+        $stmt->execute($allParams);
 
         return [
-            'data' => $stmt->fetchAll(),
+            'data' => $stmt->fetchAll(\PDO::FETCH_ASSOC),
             'meta' => [
                 'current_page' => $page,
                 'per_page' => $perPage,

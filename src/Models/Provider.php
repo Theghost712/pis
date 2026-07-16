@@ -41,8 +41,19 @@ class Provider
         return $this->hydrate($data);
     }
 
-    public function findByUserId(int $userId): ?self
+    public function find(int $id): ?array
     {
+        $db = Database::getInstance();
+        $stmt = $db->prepareAndExecute(
+            "SELECT * FROM providers WHERE id = ? LIMIT 1",
+            [$id]
+        );
+        return $stmt->fetch() ?: null;
+    }
+
+    public function findByUserId(?int $userId): ?self
+    {
+        if ($userId === null) return null;
         $db = Database::getInstance();
         $stmt = $db->prepareAndExecute(
             "SELECT * FROM providers WHERE user_id = ? LIMIT 1",
@@ -53,6 +64,13 @@ class Provider
             return null;
         }
         return $this->hydrate($data);
+    }
+
+    public function all(): array
+    {
+        $db = Database::getInstance();
+        $stmt = $db->prepareAndExecute("SELECT p.*, u.username, u.email, u.first_name, u.last_name, h.name as hospital_name FROM providers p JOIN users u ON p.user_id = u.id JOIN hospitals h ON p.hospital_id = h.id ORDER BY u.last_name ASC");
+        return $stmt->fetchAll();
     }
 
     public function findAll(array $filters = [], int $limit = 100, int $offset = 0): array
@@ -147,7 +165,7 @@ class Provider
         return $db->lastInsertId();
     }
 
-    public function update(array $data): bool
+    public function update(array $data, ?int $id = null): bool
     {
         $db = Database::getInstance();
         $fields = [];
@@ -166,18 +184,20 @@ class Provider
             return true;
         }
 
-        $params[] = $this->id;
+        $providerId = $id ?? $this->id;
+        $params[] = $providerId;
         $sql = "UPDATE providers SET " . implode(', ', $fields) . " WHERE id = ?";
         $db->prepareAndExecute($sql, $params);
         return true;
     }
 
-    public function delete(): bool
+    public function delete(?int $id = null): bool
     {
         $db = Database::getInstance();
+        $providerId = $id ?? $this->id;
         $db->prepareAndExecute(
             "DELETE FROM providers WHERE id = ?",
-            [$this->id]
+            [$providerId]
         );
         return true;
     }
