@@ -2,11 +2,6 @@
 
 declare(strict_types=1);
 
-use Dotenv\Dotenv;
-
-$dotenv = Dotenv::createImmutable(BASE_PATH);
-$dotenv->load();
-
 return [
     'app' => [
         'name' => $_ENV['APP_NAME'] ?? 'Patient Information Sharing System',

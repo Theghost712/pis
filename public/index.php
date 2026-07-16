@@ -1,13 +1,15 @@
 <?php
+define('BASE_PATH', dirname(__DIR__));
+
 // Load Composer autoloader
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once BASE_PATH . '/vendor/autoload.php';
 
 // Load environment variables
-$dotenv = \Dotenv\Dotenv::createImmutable(__DIR__ . '/..');
+$dotenv = \Dotenv\Dotenv::createImmutable(BASE_PATH);
 $dotenv->load();
 
 // Set error reporting based on environment
-if ($_ENV['APP_ENV'] === 'production') {
+if (($_ENV['APP_ENV'] ?? 'production') === 'production') {
     error_reporting(0);
     ini_set('display_errors', 0);
 } else {
@@ -20,9 +22,6 @@ date_default_timezone_set('UTC');
 
 // Start session
 session_start();
-
-// Load router
-require_once __DIR__ . '/../src/Core/Router.php';
 
 $router = new \App\Core\Router();
 
