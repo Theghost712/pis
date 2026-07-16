@@ -2,18 +2,59 @@
 
 declare(strict_types=1);
 
-namespace PIS\Controllers;
+namespace App\Controllers;
 
-use PIS\Models\Patient;
+use App\Models\Patient;
+use App\Models\MedicalRecord;
+use App\Core\Session;
 
 class PatientController extends Controller
 {
     private Patient $model;
+    private MedicalRecord $recordModel;
 
     public function __construct()
     {
         $this->model = new Patient();
+        $this->recordModel = new MedicalRecord();
     }
+
+    // ========== WEB ROUTES ==========
+
+    public function profile(): void
+    {
+        $userId = Session::get('user_id');
+        $patient = $this->model->findByUserId($userId);
+        $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
+
+        $this->view('patient.profile', ['user' => $user, 'patient' => $patient, 'currentPage' => 'profile']);
+    }
+
+    public function updateProfile(): void
+    {
+        $userId = Session::get('user_id');
+        $patient = $this->model->findByUserId($userId);
+
+        if ($patient) {
+            $input = $this->getInput();
+            $this->model->update($patient['id'], $input);
+        }
+
+        Session::flash('success', 'Profile updated successfully.');
+        $this->redirect('/patient/profile');
+    }
+
+    public function records(): void
+    {
+        $userId = Session::get('user_id');
+        $patient = $this->model->findByUserId($userId);
+        $records = $patient ? $this->recordModel->findByPatientId($patient['id']) : [];
+        $user = ['id' => $userId, 'name' => Session::get('user_name'), 'email' => Session::get('user_email'), 'role' => Session::get('user_role')];
+
+        $this->view('patient.records', ['user' => $user, 'records' => $records, 'currentPage' => 'records']);
+    }
+
+    // ========== API ROUTES ==========
 
     public function index(): void
     {

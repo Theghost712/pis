@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PIS\Models;
+namespace App\Models;
 
 class MedicalRecord extends Model
 {

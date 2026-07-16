@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PIS\Services;
+namespace App\Services;
 
 class EncryptionService
 {

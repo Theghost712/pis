@@ -1,13 +1,21 @@
 {
-    "name": "pis/patient-information-system",
-    "description": "Patient Information System - Healthcare Management Platform",
+    "name": "patient-sharing-system/piss",
+    "description": "Patient Information Sharing System",
     "type": "project",
+    "require": {
+        "php": ">=8.0",
+        "vlucas/phpdotenv": "^5.4",
+        "phpmailer/phpmailer": "^6.6",
+        "sonata-project/google-authenticator": "^2.1",
+        "firebase/php-jwt": "^6.3",
+        "monolog/monolog": "^2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
     "autoload": {
         "psr-4": {
-            "PIS\\": "src/"
+            "App\\": "src/"
         }
-    },
-    "require": {
-        "php": ">=8.1"
     }
 }

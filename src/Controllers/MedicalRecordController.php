@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace PIS\Controllers;
+namespace App\Controllers;
 
-use PIS\Models\MedicalRecord;
+use App\Models\MedicalRecord;
 
 class MedicalRecordController extends Controller
 {

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace PIS\Services;
+namespace App\Services;
 
-use PIS\Models\User;
+use App\Models\User;
 
 class AuthService
 {

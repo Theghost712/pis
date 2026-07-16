@@ -2,45 +2,141 @@
 
 declare(strict_types=1);
 
-namespace PIS\Core;
+namespace App\Core;
 
 class Session
 {
-    public static function set(string $key, mixed $value): void
+    private static ?Session $instance = null;
+    private array $config;
+    private bool $started = false;
+
+    private function __construct()
     {
+        $this->config = require __DIR__ . '/../../config/config.php';
+    }
+
+    public static function getInstance(): Session
+    {
+        if (self::$instance === null) {
+            self::$instance = new Session();
+        }
+        return self::$instance;
+    }
+
+    public function start(): void
+    {
+        if ($this->started) {
+            return;
+        }
+
+        if (session_status() === PHP_SESSION_NONE) {
+            $config = $this->config['session'];
+
+            session_set_cookie_params([
+                'lifetime' => $config['lifetime'],
+                'path' => '/',
+                'domain' => '',
+                'secure' => $config['secure'],
+                'httponly' => $config['httponly'],
+                'samesite' => $config['samesite'],
+            ]);
+
+            session_start();
+
+            if (!isset($_SESSION['_created_at'])) {
+                $_SESSION['_created_at'] = time();
+            } elseif (time() - $_SESSION['_created_at'] > 300) {
+                $this->regenerateId();
+                $_SESSION['_created_at'] = time();
+            }
+
+            $this->started = true;
+        }
+    }
+
+    public function set(string $key, $value): void
+    {
+        $this->start();
         $_SESSION[$key] = $value;
     }
 
-    public static function get(string $key, mixed $default = null): mixed
+    public function get(string $key, $default = null)
     {
+        $this->start();
         return $_SESSION[$key] ?? $default;
     }
 
-    public static function has(string $key): bool
+    public function has(string $key): bool
     {
+        $this->start();
         return isset($_SESSION[$key]);
     }
 
-    public static function remove(string $key): void
+    public function remove(string $key): void
     {
+        $this->start();
         unset($_SESSION[$key]);
     }
 
-    public static function destroy(): void
+    public function clear(): void
     {
-        session_destroy();
+        $this->start();
         $_SESSION = [];
     }
 
-    public static function flash(string $key, mixed $value): void
+    public function destroy(): void
     {
+        $this->start();
+        $_SESSION = [];
+        session_destroy();
+        session_write_close();
+        $this->started = false;
+    }
+
+    public function regenerateId(): void
+    {
+        $this->start();
+        session_regenerate_id(true);
+    }
+
+    public function isLoggedIn(): bool
+    {
+        $this->start();
+        return $this->has('user_id') && $this->has('user_role');
+    }
+
+    public function getUserId(): ?int
+    {
+        return $this->get('user_id');
+    }
+
+    public function getUserRole(): ?string
+    {
+        return $this->get('user_role');
+    }
+
+    public function getUserName(): ?string
+    {
+        return $this->get('user_name');
+    }
+
+    public function setFlash(string $key, $value): void
+    {
+        $this->start();
         $_SESSION['_flash'][$key] = $value;
     }
 
-    public static function getFlash(string $key, mixed $default = null): mixed
+    public function getFlash(string $key, $default = null)
     {
+        $this->start();
         $value = $_SESSION['_flash'][$key] ?? $default;
         unset($_SESSION['_flash'][$key]);
         return $value;
+    }
+
+    public function hasFlash(string $key): bool
+    {
+        $this->start();
+        return isset($_SESSION['_flash'][$key]);
     }
 }

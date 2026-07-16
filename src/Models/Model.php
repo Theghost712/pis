@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace PIS\Models;
+namespace App\Models;
 
-use PIS\Core\Database;
+use App\Core\Database;
 use PDO;
 
 abstract class Model

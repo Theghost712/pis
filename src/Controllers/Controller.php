@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace PIS\Controllers;
+namespace App\Controllers;
 
 class Controller
 {
