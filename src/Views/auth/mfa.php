@@ -1,6 +1,7 @@
 <?php
 $pageTitle = 'Two-Factor Authentication';
-$content = '
+ob_start();
+?>
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
         <div class="card shadow-lg border-0">
@@ -12,9 +13,9 @@ $content = '
                     Please enter the 6-digit code from your authenticator app.
                 </p>
                 <form method="POST" action="/login">
-                    <input type="hidden" name="username" value="' . htmlspecialchars($_POST['username'] ?? '') . '">
-                    <input type="hidden" name="password" value="' . htmlspecialchars($_POST['password'] ?? '') . '">
-                    <input type="hidden" name="csrf_token" value="' . $this->security->generateCSRFToken() . '">
+                    <input type="hidden" name="username" value="<?php echo htmlspecialchars($_POST['username'] ?? ''); ?>">
+                    <input type="hidden" name="password" value="<?php echo htmlspecialchars($_POST['password'] ?? ''); ?>">
+                    <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
                     <div class="mb-4">
                         <label for="mfa_code" class="form-label">Authentication Code</label>
                         <input type="text" class="form-control form-control-lg text-center" id="mfa_code" 
@@ -31,5 +32,6 @@ $content = '
         </div>
     </div>
 </div>
-';
-require_once __DIR__ . '/../layouts/main.php'; 
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../layouts/main.php';

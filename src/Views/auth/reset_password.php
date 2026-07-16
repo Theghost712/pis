@@ -1,7 +1,8 @@
 <?php
 $pageTitle = 'Reset Password';
 $token = htmlspecialchars($_GET['token'] ?? '');
-$content = '
+ob_start();
+?>
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
         <div class="card shadow-lg border-0">
@@ -13,7 +14,7 @@ $content = '
                     Enter your new password below.
                 </p>
                 <form method="POST" action="/reset-password" class="validated">
-                    <input type="hidden" name="token" value="' . $token . '">
+                    <input type="hidden" name="token" value="<?php echo $token; ?>">
                     <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
                     <div class="mb-3">
                         <label for="password" class="form-label">New Password</label>
@@ -34,5 +35,6 @@ $content = '
         </div>
     </div>
 </div>
-';
-require_once __DIR__ . '/../layouts/main.php'; 
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../layouts/main.php';

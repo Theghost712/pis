@@ -1,13 +1,13 @@
 <?php
 $pageTitle = 'Patient Dashboard';
 $dashboardUrl = '/patient/dashboard';
-
-$content = '
+ob_start();
+?>
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2><i class="fas fa-user-circle text-primary me-2"></i>Welcome, ' . htmlspecialchars($_SESSION['user_name'] ?? 'Patient') . '</h2>
-            <span class="badge bg-primary fs-6">Patient ID: P' . str_pad($patientData->getId(), 6, '0', STR_PAD_LEFT) . '</span>
+            <h2><i class="fas fa-user-circle text-primary me-2"></i>Welcome, <?php echo htmlspecialchars($_SESSION['user_name'] ?? 'Patient'); ?></h2>
+            <span class="badge bg-primary fs-6">Patient ID: P<?php echo str_pad($patientData->getId(), 6, '0', STR_PAD_LEFT); ?></span>
         </div>
     </div>
 </div>
@@ -17,7 +17,7 @@ $content = '
     <div class="col-md-3 col-sm-6">
         <div class="card bg-primary text-white h-100 shadow-sm">
             <div class="card-body dashboard-stat">
-                <div class="number">' . $stats['total_records'] . '</div>
+                <div class="number"><?php echo $stats['total_records']; ?></div>
                 <div class="label text-white-50">Total Records</div>
             </div>
         </div>
@@ -25,7 +25,7 @@ $content = '
     <div class="col-md-3 col-sm-6">
         <div class="card bg-success text-white h-100 shadow-sm">
             <div class="card-body dashboard-stat">
-                <div class="number">' . $stats['active_consents'] . '</div>
+                <div class="number"><?php echo $stats['active_consents']; ?></div>
                 <div class="label text-white-50">Active Consents</div>
             </div>
         </div>
@@ -33,7 +33,7 @@ $content = '
     <div class="col-md-3 col-sm-6">
         <div class="card bg-info text-white h-100 shadow-sm">
             <div class="card-body dashboard-stat">
-                <div class="number">' . $stats['total_consents'] . '</div>
+                <div class="number"><?php echo $stats['total_consents']; ?></div>
                 <div class="label text-white-50">Total Consents</div>
             </div>
         </div>
@@ -41,7 +41,7 @@ $content = '
     <div class="col-md-3 col-sm-6">
         <div class="card bg-warning text-dark h-100 shadow-sm">
             <div class="card-body dashboard-stat">
-                <div class="number">' . $stats['recent_visits'] . '</div>
+                <div class="number"><?php echo $stats['recent_visits']; ?></div>
                 <div class="label text-dark-50">Recent Visits</div>
             </div>
         </div>
@@ -158,5 +158,6 @@ $content = '
         </div>
     </div>
 </div>
-';
+<?php
+$content = ob_get_clean();
 require_once __DIR__ . '/../layouts/main.php';

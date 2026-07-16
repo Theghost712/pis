@@ -1,8 +1,8 @@
 <?php
 $pageTitle = 'Manage Consents';
 $dashboardUrl = '/patient/dashboard';
-
-$content = '
+ob_start();
+?>
 <div class="row">
     <div class="col-12">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -31,10 +31,10 @@ $content = '
                             <select class="form-select" id="provider_id" name="provider_id" required>
                                 <option value="">Choose a provider...</option>
                                 <?php foreach ($availableProviders as $provider): ?>
-                                    <option value="' . $provider['id'] . '">
-                                        ' . htmlspecialchars($provider['first_name'] . ' ' . $provider['last_name']) . '
-                                        - ' . htmlspecialchars($provider['specialization']) . '
-                                        (' . htmlspecialchars($provider['hospital_name']) . ')
+                                    <option value="<?php echo $provider['id']; ?>">
+                                        <?php echo htmlspecialchars($provider['first_name'] . ' ' . $provider['last_name']); ?>
+                                        - <?php echo htmlspecialchars($provider['specialization']); ?>
+                                        (<?php echo htmlspecialchars($provider['hospital_name']); ?>)
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -111,16 +111,16 @@ $content = '
                                             <?php if ($isActive): ?>
                                                 <form method="POST" action="/consent/revoke" class="d-inline">
                                                     <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
-                                                    <input type="hidden" name="consent_id" value="' . $consent['id'] . '">
+                                                    <input type="hidden" name="consent_id" value="<?php echo $consent['id']; ?>">
                                                     <button type="submit" class="btn btn-sm btn-danger" 
-                                                            onclick="return confirm(\'Are you sure you want to revoke this consent?\')">
+                                                            onclick="return confirm('Are you sure you want to revoke this consent?')">
                                                         <i class="fas fa-times"></i>
                                                     </button>
                                                 </form>
                                                 <?php if (strtotime($consent['expires_at']) <= time() + 30 * 86400): ?>
                                                     <form method="POST" action="/consent/renew" class="d-inline">
                                                         <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
-                                                        <input type="hidden" name="consent_id" value="' . $consent['id'] . '">
+                                                        <input type="hidden" name="consent_id" value="<?php echo $consent['id']; ?>">
                                                         <input type="hidden" name="days" value="365">
                                                         <button type="submit" class="btn btn-sm btn-success">
                                                             <i class="fas fa-sync"></i>
@@ -130,7 +130,7 @@ $content = '
                                             <?php elseif ($consent['status'] === 'expired' || $isExpired): ?>
                                                 <form method="POST" action="/consent/renew" class="d-inline">
                                                     <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
-                                                    <input type="hidden" name="consent_id" value="' . $consent['id'] . '">
+                                                    <input type="hidden" name="consent_id" value="<?php echo $consent['id']; ?>">
                                                     <input type="hidden" name="days" value="365">
                                                     <button type="submit" class="btn btn-sm btn-primary">
                                                         <i class="fas fa-redo"></i> Renew
@@ -148,5 +148,6 @@ $content = '
         </div>
     </div>
 </div>
-';
+<?php
+$content = ob_get_clean();
 require_once __DIR__ . '/../layouts/main.php';

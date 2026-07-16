@@ -1,7 +1,8 @@
 <?php
 $pageTitle = 'Register';
 $formData = $this->session->getFlash('form_data', []);
-$content = '
+ob_start();
+?>
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
         <div class="card shadow-lg border-0">
@@ -124,5 +125,6 @@ $content = '
         </div>
     </div>
 </div>
-';
-require_once __DIR__ . '/../layouts/main.php'; 
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../layouts/main.php';

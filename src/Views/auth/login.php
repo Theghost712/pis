@@ -1,6 +1,7 @@
 <?php
 $pageTitle = 'Login';
-$content = '
+ob_start();
+?>
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
         <div class="card shadow-lg border-0">
@@ -40,7 +41,7 @@ $content = '
                 </div>
                 <hr>
                 <div class="text-center">
-                    <p class="mb-2">Don\'t have an account?</p>
+                    <p class="mb-2">Don't have an account?</p>
                     <a href="/register" class="btn btn-outline-secondary w-100">
                         <i class="fas fa-user-plus me-2"></i>Create New Account
                     </a>
@@ -49,5 +50,6 @@ $content = '
         </div>
     </div>
 </div>
-';
+<?php
+$content = ob_get_clean();
 require_once __DIR__ . '/../layouts/main.php';

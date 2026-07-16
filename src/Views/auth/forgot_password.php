@@ -1,6 +1,7 @@
 <?php
 $pageTitle = 'Forgot Password';
-$content = '
+ob_start();
+?>
 <div class="row justify-content-center">
     <div class="col-md-6 col-lg-4">
         <div class="card shadow-lg border-0">
@@ -9,7 +10,7 @@ $content = '
             </div>
             <div class="card-body p-4">
                 <p class="text-muted mb-4">
-                    Enter your email address and we\'ll send you a link to reset your password.
+                    Enter your email address and we'll send you a link to reset your password.
                 </p>
                 <form method="POST" action="/forgot-password" class="validated">
                     <input type="hidden" name="csrf_token" value="<?php echo $this->security->generateCSRFToken(); ?>">
@@ -29,5 +30,6 @@ $content = '
         </div>
     </div>
 </div>
-';
-require_once __DIR__ . '/../layouts/main.php'; 
+<?php
+$content = ob_get_clean();
+require_once __DIR__ . '/../layouts/main.php';
