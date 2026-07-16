@@ -1,0 +1,13 @@
+{
+    "name": "pis/patient-information-system",
+    "description": "Patient Information System - Healthcare Management Platform",
+    "type": "project",
+    "autoload": {
+        "psr-4": {
+            "PIS\\": "src/"
+        }
+    },
+    "require": {
+        "php": ">=8.1"
+    }
+}
